@@ -33,17 +33,25 @@ trait RevisionableTrait
     {
         parent::boot();
 
-        static::saving(function ($model) {
+        static::creating(function ($model) {
+            $model->preSave();
+        });
+        
+        static::created(function ($model) {
+            $model->postSave('create');
+        });
+        
+        static::updating(function ($model) {
             $model->preSave();
         });
 
-        static::saved(function ($model) {
-            $model->postSave();
+        static::updated(function ($model) {
+            $model->postSave('update');
         });
 
         static::deleted(function ($model) {
             $model->preSave();
-            $model->postDelete();
+            $model->postDelete('delete');
         });
 
     }
@@ -99,23 +107,23 @@ trait RevisionableTrait
 
     /**
      * Called after a model is successfully saved.
-     *
+     * @param string $action create, update and delete
      * @return void
      */
-    public function postSave()
+    public function postSave($action)
     {
 
         // check if the model already exists
-        if ((!isset($this->revisionEnabled) || $this->revisionEnabled) && $this->updating) {
+        if ((!isset($this->revisionEnabled) || $this->revisionEnabled)) {
             // if it does, it means we're updating
 
             $changes_to_record = $this->changedRevisionableFields();
-
             $revisions = array();
 
             foreach ($changes_to_record as $key => $change) {
 
                 $revisions[] = array(
+                    'action'                => $action,
                     'revisionable_type'     => get_class($this),
                     'revisionable_id'       => $this->getKey(),
                     'key'                   => $key,
@@ -128,9 +136,9 @@ trait RevisionableTrait
 
             }
 
-            if (count($revisions) > 0) {
-                $revision = new Revision;
-                \DB::table($revision->getTable())->insert($revisions);
+            if (count($revisions) > 0) {                
+                $revision = new Revision;                
+                $revision->insert($revisions);
             }
 
         }
@@ -140,12 +148,13 @@ trait RevisionableTrait
     /**
      * If softdeletes are enabled, store the deleted time
      */
-    public function postDelete()
+    public function postDelete($action)
     {
         if ((!isset($this->revisionEnabled) || $this->revisionEnabled)
             && $this->isSoftDelete()
             && $this->isRevisionable('deleted_at')) {
             $revisions[] = array(
+                'action' => $action,
                 'revisionable_type' => get_class($this),
                 'revisionable_id' => $this->getKey(),
                 'key' => 'deleted_at',
@@ -155,8 +164,9 @@ trait RevisionableTrait
                 'created_at' => new \DateTime(),
                 'updated_at' => new \DateTime(),
             );
-            $revision = new \Venturecraft\Revisionable\Revision;
-            \DB::table($revision->getTable())->insert($revisions);
+            
+            $revision = new Revision;                
+            $revision->insert($revisions);
         }
     }
 

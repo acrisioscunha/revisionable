@@ -1,7 +1,6 @@
 <?php namespace Venturecraft\Revisionable;
 
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\Eloquent\Model as Eloquent;
 
 /**
  * Revision
@@ -12,15 +11,37 @@ use Illuminate\Database\Eloquent\Model as Eloquent;
  * (c) Venture Craft <http://www.venturecraft.com.au>
  */
 
-class Revision extends Eloquent
+class Revision extends \Revloquent
 {
 
-    public $table = 'revisions';
+    protected $connection;
+    protected $collection;
+    protected $table;    
 
     protected $revisionFormattedFields = array();
 
     public function __construct(array $attributes = array())
     {
+        
+        if (\Config::get('revisionable::table') 
+                && !empty(\Config::get('revisionable::table')) 
+                    && get_parent_class($this) === 'Jenssegers\Mongodb\Model') 
+        {            
+            $this->collection = \Config::get('revisionable::table');                                    
+        }
+        else if (\Config::get('revisionable::table') 
+                    && !empty(\Config::get('revisionable::table'))) 
+        {
+            $this->table = \Config::get('revisionable::table');                        
+        } else {
+            $this->table = 'revisions';
+        }
+        
+        if (\Config::get('revisionable::connection')) 
+        {            
+            $this->connection = \Config::get('revisionable::connection');                        
+        }        
+        
         parent::__construct($attributes);
     }
 
@@ -214,4 +235,10 @@ class Revision extends Eloquent
             return $value;
         }
     }
+    
+    public function getCreatedAtAttribute($value)
+    {        
+        return new \Carbon\Carbon($value['date']);
+    } 
+    
 }
