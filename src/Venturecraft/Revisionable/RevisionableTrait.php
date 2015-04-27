@@ -33,12 +33,9 @@ trait RevisionableTrait
     {
         parent::boot();
 
-        static::creating(function ($model) {
-            $model->preSave();
-        });
-        
         static::created(function ($model) {
-            $model->postSave('create');
+            $model->preSave();
+            $model->postSave('create');            
         });
         
         static::updating(function ($model) {
@@ -77,8 +74,8 @@ trait RevisionableTrait
 
             // we can only safely compare basic items,
             // so for now we drop any object based items, like DateTime
-            foreach ($this->updatedData as $key => $val) {
-                if (gettype($val) == 'object') {
+            foreach ($this->updatedData as $key => $val) {                  
+                if (gettype($val) == 'object' && !in_array($key, $this->objectKeepRevisionOf)) {                    
                     unset($this->originalData[$key]);
                     unset($this->updatedData[$key]);
                 }
@@ -96,15 +93,18 @@ trait RevisionableTrait
 
             unset($this->attributes['dontKeepRevisionOf']);
             unset($this->attributes['keepRevisionOf']);
-
-            $this->dirtyData = $this->getDirty();
-            $this->updating = $this->exists;
+            
+            if(!empty($this->originalData)) {
+                $this->dirtyData = $this->getDirty();            
+                $this->updating = $this->exists;
+            }
+            
+            $this->dirtyData = $this->updatedData;
 
         }
 
     }
-
-
+    
     /**
      * Called after a model is successfully saved.
      * @param string $action create, update and delete
@@ -116,8 +116,8 @@ trait RevisionableTrait
         // check if the model already exists
         if ((!isset($this->revisionEnabled) || $this->revisionEnabled)) {
             // if it does, it means we're updating
-
             $changes_to_record = $this->changedRevisionableFields();
+
             $revisions = array();
 
             foreach ($changes_to_record as $key => $change) {
@@ -203,7 +203,7 @@ trait RevisionableTrait
         foreach ($this->dirtyData as $key => $value) {
             // check that the field is revisionable, and double check
             // that it's actually new data in case dirty is, well, clean
-            if ($this->isRevisionable($key) && !is_array($value)) {
+            if ($this->isRevisionable($key) && (!is_array($value) || in_array($key, $this->objectKeepRevisionOf))) {
                 if (!isset($this->originalData[$key]) || $this->originalData[$key] != $this->updatedData[$key]) {
                     $changes_to_record[$key] = $value;
                 }

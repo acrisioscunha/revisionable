@@ -241,4 +241,23 @@ class Revision extends \Revloquent
         return new \Carbon\Carbon($value['date']);
     } 
     
+    public function formatArrayRecursive($key, $value){
+        
+        $valuesString = [];
+        $valuesString[] = $key;
+        
+        foreach ($value as $k => $v) {
+
+            if(is_array($v)) {                
+                $valuesString[] = $this->formatArrayRecursive($k, $v);
+            } else {                
+                $valuesString[] = $k . ' para ' . $v;
+            }
+            
+        } 
+        
+        return implode(', ', $valuesString);        
+        
+    }
+    
 }
