@@ -188,7 +188,7 @@ class Revision extends \Revloquent
 
         }
 
-        return $this->format($this->key, $this->$which_value);
+        return $this->format($this->key, $this->attributes[$which_value]);
 
     }
 
@@ -236,9 +236,9 @@ class Revision extends \Revloquent
         }
     }
     
-    public function getCreatedAtAttribute($value)
+    public function getCreatedAtAttribute()
     {        
-        return new \Carbon\Carbon($value['date']);
+        return new \Carbon\Carbon($this->attributes['created_at']['date']);
     } 
     
     public function formatArrayRecursive($key, $value){
